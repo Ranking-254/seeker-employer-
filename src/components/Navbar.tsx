@@ -1,9 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { Briefcase, User } from "lucide-react";
+import { Briefcase, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="border-b bg-card sticky top-0 z-50">
@@ -26,12 +36,38 @@ export const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate("/login")}>
-            Sign In
-          </Button>
-          <Button onClick={() => navigate("/register")}>
-            Get Started
-          </Button>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                  <Avatar>
+                    <AvatarFallback>
+                      <User className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => navigate("/login")}>
+                Sign In
+              </Button>
+              <Button onClick={() => navigate("/register")}>
+                Get Started
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </nav>
