@@ -1,52 +1,97 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MapPin, Briefcase, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { JobCard } from "@/components/JobCard";
+import { supabase } from "@/integrations/supabase/client";
+import { Navbar } from "@/components/Navbar";
 
-const MOCK_JOBS = [
-  {
-    id: "1",
-    title: "Senior Frontend Developer",
-    company: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    type: "Full-time",
-    salary: "$120k - $160k",
-    description: "We're looking for an experienced frontend developer...",
-    postedDate: "2 days ago",
-    logo: "https://api.dicebear.com/7.x/initials/svg?seed=TC"
-  },
-  {
-    id: "2",
-    title: "UX/UI Designer",
-    company: "Design Studio",
-    location: "Remote",
-    type: "Full-time",
-    salary: "$90k - $130k",
-    description: "Join our creative team to design beautiful experiences...",
-    postedDate: "1 week ago",
-    logo: "https://api.dicebear.com/7.x/initials/svg?seed=DS"
-  },
-  {
-    id: "3",
-    title: "Backend Engineer",
-    company: "Cloud Systems",
-    location: "New York, NY",
-    type: "Full-time",
-    salary: "$130k - $180k",
-    description: "Build scalable backend systems with cutting-edge technology...",
-    postedDate: "3 days ago",
-    logo: "https://api.dicebear.com/7.x/initials/svg?seed=CS"
-  }
-];
+interface Job {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  job_type: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  created_at: string;
+  employer_profiles: {
+    company_name: string;
+    company_logo: string | null;
+  };
+}
 
 const Jobs = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [location, setLocation] = useState("");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("jobs")
+        .select(`
+          *,
+          employer_profiles (
+            company_name,
+            company_logo
+          )
+        `)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setJobs(data || []);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatJob = (job: Job) => {
+    const formatSalary = () => {
+      if (!job.salary_min && !job.salary_max) return "Competitive";
+      if (job.salary_min && job.salary_max) return `$${job.salary_min.toLocaleString()} - $${job.salary_max.toLocaleString()}`;
+      if (job.salary_min) return `From $${job.salary_min.toLocaleString()}`;
+      return `Up to $${job.salary_max?.toLocaleString()}`;
+    };
+
+    const formatDate = () => {
+      const date = new Date(job.created_at);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return "Today";
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      return `${Math.floor(diffDays / 30)} months ago`;
+    };
+
+    return {
+      id: job.id,
+      title: job.title,
+      company: job.employer_profiles.company_name,
+      location: job.location,
+      type: job.job_type.replace("_", "-"),
+      salary: formatSalary(),
+      description: job.description,
+      postedDate: formatDate(),
+      logo: job.employer_profiles.company_logo || `https://api.dicebear.com/7.x/initials/svg?seed=${job.employer_profiles.company_name}`
+    };
+  };
 
   return (
     <div className="min-h-screen bg-secondary">
+      <Navbar />
       <div className="bg-primary py-12">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-8">Find Your Dream Job</h1>
@@ -108,14 +153,25 @@ const Jobs = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">All Jobs</h2>
-          <p className="text-muted-foreground">{MOCK_JOBS.length} jobs found</p>
+          <p className="text-muted-foreground">{jobs.length} jobs found</p>
         </div>
         
-        <div className="grid gap-6">
-          {MOCK_JOBS.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading jobs...</p>
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold mb-2">No jobs found</h3>
+            <p className="text-muted-foreground">Check back later for new opportunities!</p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {jobs.map((job) => (
+              <JobCard key={job.id} job={formatJob(job)} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
