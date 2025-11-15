@@ -1,21 +1,24 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { Briefcase, FileText, Bookmark, TrendingUp } from "lucide-react";
 
 const Dashboard = () => {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen bg-secondary">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-2">Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!</h1>
+        <p className="text-muted-foreground mb-8">Here's what's happening with your job search</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Applications Sent
-              </CardTitle>
+              </h3>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -26,9 +29,9 @@ const Dashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Saved Jobs
-              </CardTitle>
+              </h3>
               <Bookmark className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -39,9 +42,9 @@ const Dashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Profile Views
-              </CardTitle>
+              </h3>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -52,9 +55,9 @@ const Dashboard = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <h3 className="text-sm font-medium text-muted-foreground">
                 Active Jobs
-              </CardTitle>
+              </h3>
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -67,7 +70,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Applications</CardTitle>
+              <h3 className="text-lg font-semibold">Recent Applications</h3>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -91,7 +94,7 @@ const Dashboard = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Recommended Jobs</CardTitle>
+              <h3 className="text-lg font-semibold">Recommended Jobs</h3>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
