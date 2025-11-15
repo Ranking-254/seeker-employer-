@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,12 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Briefcase, User, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
-type UserRole = "jobseeker" | "employer";
+type UserRole = "job_seeker" | "employer";
 
 const Register = () => {
   const navigate = useNavigate();
-  const [role, setRole] = useState<UserRole>("jobseeker");
+  const { signUp, user } = useAuth();
+  const [role, setRole] = useState<UserRole>("job_seeker");
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -19,10 +22,28 @@ const Register = () => {
     confirmPassword: ""
   });
 
-  const handleRegister = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement registration logic with Lovable Cloud
-    console.log("Register:", { ...formData, role });
+    
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords don't match!");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsLoading(true);
+    await signUp(formData.email, formData.password, formData.name, role);
+    setIsLoading(false);
   };
 
   return (
@@ -41,8 +62,8 @@ const Register = () => {
               <Label>I am a</Label>
               <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)}>
                 <div className="flex items-center space-x-2 p-4 border rounded-lg cursor-pointer hover:bg-secondary">
-                  <RadioGroupItem value="jobseeker" id="jobseeker" />
-                  <Label htmlFor="jobseeker" className="flex items-center gap-2 cursor-pointer flex-1">
+                  <RadioGroupItem value="job_seeker" id="job_seeker" />
+                  <Label htmlFor="job_seeker" className="flex items-center gap-2 cursor-pointer flex-1">
                     <User className="h-5 w-5 text-primary" />
                     <div>
                       <div className="font-medium">Job Seeker</div>
@@ -110,8 +131,8 @@ const Register = () => {
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Create Account
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
 
