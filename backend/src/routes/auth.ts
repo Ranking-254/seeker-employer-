@@ -116,7 +116,7 @@ router.post('/login', [
 // Get current user profile
 router.get('/me', authenticateToken, async (req: any, res) => {
     try {
-        const user = await User.findById(req.user._id).select('-password');
+        const user = await User.findById(req.userId).select('-password');
         res.json({ user });
     } catch (error) {
         console.error('Get profile error:', error);
