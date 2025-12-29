@@ -14,26 +14,43 @@ const PORT = process.env.PORT || 5000;
 // Connect to MongoDB
 connectDB();
 
-// Middleware
-app.use(helmet());
+// --- CORS CONFIGURATION ---
+// Orodha ya website zinazoruhusiwa kuongea na server hii
+const allowedOrigins = [
+    'http://localhost:8080', // Frontend yako ya local
+    'https://seeker-employer.vercel.app', // Frontend yako ya Vercel
+    process.env.FRONTEND_URL // URL yoyote utakayoweka kwenye .env
+].filter(Boolean) as string[]; // Inafuta "undefined" kama .env haipo
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'https://seeker-employer.vercel.app',
+    origin: function (origin, callback) {
+        // Inaruhusu requests zisizo na origin (kama Postman au simu)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log("Blocked by CORS:", origin); // Inasaidia ku-debug origin inayokataliwa
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
+// --------------------------
+
+app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    max: 100,
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
 
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
@@ -51,13 +68,11 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/saved-jobs', savedJobRoutes);
 
-// Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error(err.stack);
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
     res.status(404).json({ error: 'Route not found' });
 });
