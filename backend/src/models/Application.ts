@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IApplication extends Document {
-  _id: Types.ObjectId;
+  // Removed _id here to avoid potential Document inheritance conflicts
   jobId: Types.ObjectId;
   jobSeekerId: Types.ObjectId;
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected';

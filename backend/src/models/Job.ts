@@ -1,8 +1,8 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IJob extends Document {
-    _id: string;
-    employerId: string; // Reference to User
+    // Remove _id: string; (Document provides this automatically)
+    employerId: Types.ObjectId; // Use Types.ObjectId instead of string
     title: string;
     description: string;
     requirements: string[];
@@ -17,6 +17,7 @@ export interface IJob extends Document {
 }
 
 const JobSchema = new Schema<IJob>({
+    // Now this matches the interface!
     employerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true },
     description: { type: String, required: true },

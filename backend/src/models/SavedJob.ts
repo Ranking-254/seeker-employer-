@@ -1,9 +1,9 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface ISavedJob extends Document {
-    _id: string;
-    jobSeekerId: string; // Reference to User
-    jobId: string; // Reference to Job
+    // Removed _id: string; as it is inherited from Document
+    jobSeekerId: Types.ObjectId; // Updated to Types.ObjectId
+    jobId: Types.ObjectId;       // Updated to Types.ObjectId
     createdAt: Date;
 }
 
