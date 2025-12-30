@@ -1,12 +1,11 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IApplication extends Document {
-  // Removed _id here to avoid potential Document inheritance conflicts
-  jobId: Types.ObjectId;
-  jobSeekerId: Types.ObjectId;
+  jobId: Types.ObjectId | any; // 'any' allows for .populate() access
+  jobSeekerId: Types.ObjectId | any;
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
-  coverLetter?: string;
-  cvUrl?: string;
+  coverLetter: string;
+  cvUrl: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,12 +15,12 @@ const ApplicationSchema = new Schema<IApplication>(
     jobId: {
       type: Schema.Types.ObjectId,
       ref: 'Job',
-      required: true,
+      required: [true, 'Job ID is required'],
     },
     jobSeekerId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: [true, 'Job Seeker ID is required'],
     },
     status: {
       type: String,
@@ -30,9 +29,13 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     coverLetter: {
       type: String,
+      required: [true, 'Please provide a cover letter'],
+      trim: true
     },
     cvUrl: {
       type: String,
+      required: [true, 'CV URL is required'],
+      trim: true
     },
   },
   {
@@ -42,6 +45,7 @@ const ApplicationSchema = new Schema<IApplication>(
 );
 
 // Indexes
+// Precludes duplicate applications
 ApplicationSchema.index({ jobId: 1, jobSeekerId: 1 }, { unique: true });
 ApplicationSchema.index({ jobId: 1 });
 ApplicationSchema.index({ jobSeekerId: 1 });

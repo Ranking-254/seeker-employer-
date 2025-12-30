@@ -1,11 +1,11 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import SavedJob from '../models/SavedJob';
 import Job from '../models/Job';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
-// Save a job (job seekers only)
+// 1. Save a job (job seekers only)
 router.post('/', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
     try {
         const { jobId } = req.body;
@@ -14,13 +14,11 @@ router.post('/', authenticateToken, requireRole(['job_seeker']), async (req: any
             return res.status(400).json({ error: 'Job ID is required' });
         }
 
-        // Check if job exists
         const job = await Job.findById(jobId);
         if (!job || !job.isActive) {
             return res.status(404).json({ error: 'Job not found or inactive' });
         }
 
-        // Check if already saved
         const existingSavedJob = await SavedJob.findOne({
             jobSeekerId: req.user._id,
             jobId
@@ -36,7 +34,6 @@ router.post('/', authenticateToken, requireRole(['job_seeker']), async (req: any
         });
 
         await savedJob.save();
-
         res.status(201).json({ savedJob });
     } catch (error) {
         console.error('Save job error:', error);
@@ -44,7 +41,7 @@ router.post('/', authenticateToken, requireRole(['job_seeker']), async (req: any
     }
 });
 
-// Get saved jobs for current user
+// 2. Get saved jobs for current user
 router.get('/', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
     try {
         const savedJobs = await SavedJob.find({ jobSeekerId: req.user._id })
@@ -64,7 +61,22 @@ router.get('/', authenticateToken, requireRole(['job_seeker']), async (req: any,
     }
 });
 
-// Remove saved job
+// 3. Check if a specific job is saved
+router.get('/check/:jobId', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
+    try {
+        const savedJob = await SavedJob.findOne({
+            jobSeekerId: req.user._id,
+            jobId: req.params.jobId
+        });
+
+        res.json({ isSaved: !!savedJob });
+    } catch (error) {
+        console.error('Check saved job error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 4. Remove saved job
 router.delete('/:jobId', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
     try {
         const savedJob = await SavedJob.findOneAndDelete({
@@ -79,21 +91,6 @@ router.delete('/:jobId', authenticateToken, requireRole(['job_seeker']), async (
         res.json({ message: 'Job removed from saved jobs' });
     } catch (error) {
         console.error('Remove saved job error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Check if job is saved
-router.get('/check/:jobId', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
-    try {
-        const savedJob = await SavedJob.findOne({
-            jobSeekerId: req.user._id,
-            jobId: req.params.jobId
-        });
-
-        res.json({ isSaved: !!savedJob });
-    } catch (error) {
-        console.error('Check saved job error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
