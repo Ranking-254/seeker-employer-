@@ -25,8 +25,10 @@ import AboutUs from "./pages/AboutUs";
 import Contact from "./pages/Contact";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
-import ApplyJob from "./pages/ApplyJob";  
-
+import ApplyJob from "./pages/ApplyJob"; 
+import EditJob from "./components/EditJob"; 
+import EditApplication from "./components/EditApplication";
+import Applications from "./pages/Application";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -68,6 +70,25 @@ const App = () => (
                 </ProtectedRoute>
                        } 
               />
+            <Route 
+            path="/edit-application/:id" 
+             element={<ProtectedRoute allowedRoles={['job_seeker']}>  
+                <EditApplication />
+                </ProtectedRoute>
+                       } 
+              />  
+
+            <Route 
+            path="/applications" 
+             element={<ProtectedRoute allowedRoles={['job_seeker']}>  
+                <Applications />
+                </ProtectedRoute>
+                       } 
+              />  
+
+              
+
+
 
             {/* --- PROTECTED EMPLOYER ROUTES --- */}
             {/* Only accessible if user.role === 'employer' */}
@@ -103,6 +124,14 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/edit-job/:id" 
+              element={ 
+                <ProtectedRoute allowedRoles={['employer']}>
+                  <EditJob />
+                </ProtectedRoute>
+              } 
+            />  
 
             {/* --- 404 CATCH-ALL --- */}
             <Route path="*" element={<NotFound />} />

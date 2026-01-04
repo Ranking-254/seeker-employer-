@@ -90,6 +90,12 @@ class ApiClient {
     });
   }
 
+  async employerDeleteApplication(id: string) {
+  return this.request(`/applications/employer/${id}`, { 
+    method: 'DELETE' 
+  });
+}
+
   async updateJob(id: string, jobData: any) {
     return this.request(`/jobs/${id}`, {
       method: 'PUT',
@@ -103,7 +109,7 @@ class ApiClient {
     });
   }
 
-  // --- Application Methods (FIXES DASHBOARD ERROR) ---
+  // --- Application Methods ---
   async getMyApplications() {
     return this.request('/applications/my-applications');
   }
@@ -124,6 +130,23 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify({ status }),
     });
+  }
+
+  async deleteApplication(id: string) {
+    return this.request(`/applications/${id}`, { 
+      method: 'DELETE' 
+    });
+  }
+
+  async updateApplication(id: string, data: { coverLetter: string, cvUrl: string }) {
+    return this.request(`/applications/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getApplication(id: string) {
+    return this.request(`/applications/${id}`);
   }
 
   // --- Saved Jobs ---

@@ -90,6 +90,32 @@ router.get('/employer/:jobId', authenticateToken, requireRole(['employer']), asy
     }
 });
 
+/**
+ * @route   DELETE /api/applications/employer/:id
+ * @desc    Allow employer to permanently remove an application from their dashboard
+ */
+router.delete('/employer/:id', authenticateToken, requireRole(['employer']), async (req: any, res: Response) => {
+    try {
+        const application = await Application.findById(req.params.id).populate('jobId');
+
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        // Verify that the employer deleting this owns the job listing
+        const job = application.jobId as any;
+        if (job.employerId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Unauthorized to delete this application' });
+        }
+
+        await Application.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Application removed from dashboard' });
+    } catch (error) {
+        console.error('Employer delete app error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // --- 4. UPDATE STATUS (Employer Only) ---
 router.put('/:id/status', authenticateToken, requireRole(['employer']), [
     body('status').isIn(['pending', 'reviewed', 'accepted', 'rejected']).withMessage('Invalid status')
@@ -121,6 +147,55 @@ router.put('/:id/status', authenticateToken, requireRole(['employer']), [
         console.error('Status update error:', error);
         res.status(500).json({ error: 'Server error' });
     }
+
+    // --- 5. DELETE APPLICATION (Job Seeker Only, only if pending) ---
+router.delete('/:id', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
+    try {
+        const application = await Application.findOne({ 
+            _id: req.params.id, 
+            jobSeekerId: req.user._id 
+        });
+
+        if (!application) return res.status(404).json({ error: 'Application not found' });
+
+        if (application.status !== 'pending') {
+            return res.status(403).json({ error: 'Cannot delete an application that is already processed' });
+        }
+
+        await Application.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Application withdrawn successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- 6. UPDATE APPLICATION (Job Seeker Only, only if pending) ---
+router.put('/:id', authenticateToken, requireRole(['job_seeker']), [
+    body('coverLetter').trim().notEmpty().withMessage('Cover letter cannot be empty'),
+    body('cvUrl').isURL().withMessage('Valid CV URL required')
+], async (req: any, res: Response) => {
+    try {
+        const application = await Application.findOne({ 
+            _id: req.params.id, 
+            jobSeekerId: req.user._id 
+        });
+
+        if (!application) return res.status(404).json({ error: 'Application not found' });
+
+        if (application.status !== 'pending') {
+            return res.status(403).json({ error: 'Cannot update an application that is already processed' });
+        }
+
+        const { coverLetter, cvUrl } = req.body;
+        application.coverLetter = coverLetter;
+        application.cvUrl = cvUrl;
+        
+        await application.save();
+        res.json({ message: 'Application updated successfully', application });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 });
 
 export default router;

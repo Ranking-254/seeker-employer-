@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import mongoose from 'mongoose'; 
 import Job from '../models/Job';
 import { authenticateToken, requireRole } from '../middleware/auth';
+import Application from '../models/Application'
 
 const router = express.Router();
 
@@ -11,10 +12,16 @@ const router = express.Router();
  */
 router.get('/employer/my-jobs', authenticateToken, requireRole(['employer']), async (req: any, res: Response) => {
     try {
-        const jobs = await Job.find({ employerId: req.user._id }).sort({ createdAt: -1 });
-        res.json({ jobs });
+        const jobs = await Job.find({ employerId: req.user._id }).sort({ createdAt: -1 }).lean();
+        
+        // Count applications for each job
+        const jobsWithCount = await Promise.all(jobs.map(async (job) => {
+            const count = await Application.countDocuments({ jobId: job._id });
+            return { ...job, applicantCount: count };
+        }));
+
+        res.json({ jobs: jobsWithCount });
     } catch (error) {
-        console.error('Employer jobs fetch error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
