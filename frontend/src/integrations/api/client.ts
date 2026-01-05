@@ -96,6 +96,13 @@ class ApiClient {
   });
 }
 
+async updateApplicationNote(appId: string, note: string) {
+  return this.request(`/applications/${appId}/note`, {
+    method: 'PUT',
+    body: JSON.stringify({ note }),
+  });
+}
+
   async updateJob(id: string, jobData: any) {
     return this.request(`/jobs/${id}`, {
       method: 'PUT',

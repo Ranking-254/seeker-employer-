@@ -10,7 +10,7 @@ const router = express.Router();
 router.post('/', authenticateToken, requireRole(['job_seeker']), [
     body('jobId').isMongoId().withMessage('Invalid Job ID'),
     body('coverLetter').trim().notEmpty().withMessage('Cover letter is required'),
-    body('cvUrl').isURL().withMessage('Please provide a valid CV URL')
+    body('cvUrl').isURL().withMessage('Please provide a valid CV URL (must begin wit either http:// or https://)')
 ], async (req: any, res: Response) => {
     try {
         const errors = validationResult(req);
@@ -18,13 +18,11 @@ router.post('/', authenticateToken, requireRole(['job_seeker']), [
 
         const { jobId, coverLetter, cvUrl } = req.body;
 
-        // Check if job exists and is active
         const job = await Job.findById(jobId);
         if (!job || !job.isActive) {
             return res.status(404).json({ error: 'Job not found or inactive' });
         }
 
-        // Check for existing application (Duplicate check)
         const existingApplication = await Application.findOne({
             jobId,
             jobSeekerId: req.user._id
@@ -70,10 +68,39 @@ router.get('/my-applications', authenticateToken, requireRole(['job_seeker']), a
     }
 });
 
+// --- UPDATE APPLICATION NOTE (Employer Only) ---
+// IWEKE HII JUU YA ROUTE ZA ID PEKEE ILI KUEPUKA CONFLICT
+router.put('/:id/note', authenticateToken, requireRole(['employer']), async (req: any, res: Response) => {
+    try {
+        const { note } = req.body;
+        const applicationId = req.params.id;
+        const currentEmployerId = req.user?._id || req.user?.id;
+
+        const application = await Application.findById(applicationId).populate('jobId');
+
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        const jobEmployerId = application.jobId?.employerId?.toString();
+        
+        if (jobEmployerId !== currentEmployerId?.toString()) {
+            return res.status(403).json({ error: 'Unauthorized to add notes' });
+        }
+
+        application.employerNotes = note;
+        await application.save();
+
+        res.json({ message: 'Feedback updated successfully', application });
+    } catch (error) {
+        console.error("Note update error:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // --- 3. GET APPLICANTS FOR A SPECIFIC JOB (Employer View) ---
 router.get('/employer/:jobId', authenticateToken, requireRole(['employer']), async (req: any, res: Response) => {
     try {
-        // Verify this employer actually owns the job first
         const job = await Job.findOne({ _id: req.params.jobId, employerId: req.user._id });
         if (!job) {
             return res.status(403).json({ error: 'Unauthorized: You do not own this job listing' });
@@ -90,32 +117,6 @@ router.get('/employer/:jobId', authenticateToken, requireRole(['employer']), asy
     }
 });
 
-/**
- * @route   DELETE /api/applications/employer/:id
- * @desc    Allow employer to permanently remove an application from their dashboard
- */
-router.delete('/employer/:id', authenticateToken, requireRole(['employer']), async (req: any, res: Response) => {
-    try {
-        const application = await Application.findById(req.params.id).populate('jobId');
-
-        if (!application) {
-            return res.status(404).json({ error: 'Application not found' });
-        }
-
-        // Verify that the employer deleting this owns the job listing
-        const job = application.jobId as any;
-        if (job.employerId.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ error: 'Unauthorized to delete this application' });
-        }
-
-        await Application.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Application removed from dashboard' });
-    } catch (error) {
-        console.error('Employer delete app error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
 // --- 4. UPDATE STATUS (Employer Only) ---
 router.put('/:id/status', authenticateToken, requireRole(['employer']), [
     body('status').isIn(['pending', 'reviewed', 'accepted', 'rejected']).withMessage('Invalid status')
@@ -125,15 +126,12 @@ router.put('/:id/status', authenticateToken, requireRole(['employer']), [
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
         const { status } = req.body;
-
-        // Find application and populate job to verify ownership
         const application = await Application.findById(req.params.id).populate('jobId');
 
         if (!application) {
             return res.status(404).json({ error: 'Application not found' });
         }
 
-        // Check if the current user is the owner of the job associated with this application
         const job = application.jobId as any; 
         if (job.employerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ error: 'Unauthorized to update this application' });
@@ -147,8 +145,28 @@ router.put('/:id/status', authenticateToken, requireRole(['employer']), [
         console.error('Status update error:', error);
         res.status(500).json({ error: 'Server error' });
     }
+});
 
-    // --- 5. DELETE APPLICATION (Job Seeker Only, only if pending) ---
+// --- 5. DELETE FOR EMPLOYER ---
+router.delete('/employer/:id', authenticateToken, requireRole(['employer']), async (req: any, res: Response) => {
+    try {
+        const application = await Application.findById(req.params.id).populate('jobId');
+        if (!application) return res.status(404).json({ error: 'Application not found' });
+
+        const job = application.jobId as any;
+        if (job.employerId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Unauthorized to delete this application' });
+        }
+
+        await Application.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Application removed from dashboard' });
+    } catch (error) {
+        console.error('Employer delete app error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- 6. WITHDRAW APPLICATION (Job Seeker Only, only if pending) ---
 router.delete('/:id', authenticateToken, requireRole(['job_seeker']), async (req: any, res: Response) => {
     try {
         const application = await Application.findOne({ 
@@ -159,7 +177,7 @@ router.delete('/:id', authenticateToken, requireRole(['job_seeker']), async (req
         if (!application) return res.status(404).json({ error: 'Application not found' });
 
         if (application.status !== 'pending') {
-            return res.status(403).json({ error: 'Cannot delete an application that is already processed' });
+            return res.status(403).json({ error: 'Cannot delete processed application' });
         }
 
         await Application.findByIdAndDelete(req.params.id);
@@ -169,10 +187,10 @@ router.delete('/:id', authenticateToken, requireRole(['job_seeker']), async (req
     }
 });
 
-// --- 6. UPDATE APPLICATION (Job Seeker Only, only if pending) ---
+// --- 7. UPDATE APPLICATION (Job Seeker Only, only if pending) ---
 router.put('/:id', authenticateToken, requireRole(['job_seeker']), [
     body('coverLetter').trim().notEmpty().withMessage('Cover letter cannot be empty'),
-    body('cvUrl').isURL().withMessage('Valid CV URL required')
+    body('cvUrl').isURL().withMessage('Valid CV URL required (must begin with either http:// or https://)')
 ], async (req: any, res: Response) => {
     try {
         const application = await Application.findOne({ 
@@ -183,7 +201,7 @@ router.put('/:id', authenticateToken, requireRole(['job_seeker']), [
         if (!application) return res.status(404).json({ error: 'Application not found' });
 
         if (application.status !== 'pending') {
-            return res.status(403).json({ error: 'Cannot update an application that is already processed' });
+            return res.status(403).json({ error: 'Cannot update processed application' });
         }
 
         const { coverLetter, cvUrl } = req.body;
@@ -195,7 +213,6 @@ router.put('/:id', authenticateToken, requireRole(['job_seeker']), [
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-});
 });
 
 export default router;

@@ -1,11 +1,13 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IApplication extends Document {
-  jobId: Types.ObjectId | any; // 'any' allows for .populate() access
+  jobId: Types.ObjectId | any; 
   jobSeekerId: Types.ObjectId | any;
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
   coverLetter: string;
   cvUrl: string;
+  // REKEBISHO: Lazima uiongeze hapa ili TypeScript isiwe na error
+  employerNotes: string; 
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +39,11 @@ const ApplicationSchema = new Schema<IApplication>(
       required: [true, 'CV URL is required'],
       trim: true
     },
+    // Hii iko sawa, nimeiweka vizuri tu muonekano
+    employerNotes: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,
@@ -45,7 +52,6 @@ const ApplicationSchema = new Schema<IApplication>(
 );
 
 // Indexes
-// Precludes duplicate applications
 ApplicationSchema.index({ jobId: 1, jobSeekerId: 1 }, { unique: true });
 ApplicationSchema.index({ jobId: 1 });
 ApplicationSchema.index({ jobSeekerId: 1 });

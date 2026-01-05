@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { 
   Briefcase, FileText, Bookmark, TrendingUp, 
-  Loader2, ArrowRight, Trash2, Edit3 
+  Loader2, ArrowRight, Trash2, Edit3, MessageSquare 
 } from "lucide-react";
 import { apiClient } from "@/integrations/api/client";
 import { useNavigate } from "react-router-dom";
@@ -17,10 +17,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   
   const [stats, setStats] = useState({
-    applications: 0,
-    savedJobs: 0,
-    profileViews: 145, 
-    activeJobs: 0
+    applications: 0, savedJobs: 0, profileViews: 145, activeJobs: 0
   });
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
@@ -34,7 +31,6 @@ const Dashboard = () => {
         apiClient.getMyApplications(),
         apiClient.getJobs({ limit: 5 })
       ]);
-
       const apps = appsRes.applications || appsRes;
       setStats(prev => ({
         ...prev,
@@ -42,7 +38,6 @@ const Dashboard = () => {
         applications: apps.length || 0,
         activeJobs: jobsRes.totalJobs || 0
       }));
-
       setRecentApplications(apps.slice(0, 3));
       setRecommendedJobs((jobsRes.jobs || []).slice(0, 3));
     } catch (error) {
@@ -56,14 +51,12 @@ const Dashboard = () => {
     if (user) fetchDashboardData();
   }, [user]);
 
-  // DELETE LOGIC
   const handleDeleteApplication = async (id: string) => {
     if (!window.confirm("Are you sure you want to withdraw this application?")) return;
-    
     try {
       await apiClient.deleteApplication(id);
       toast({ title: "Withdrawn", description: "Application removed successfully." });
-      fetchDashboardData(); // Refresh data
+      fetchDashboardData(); 
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -87,7 +80,6 @@ const Dashboard = () => {
         </h1>
         <p className="text-muted-foreground mb-8 text-sm">Track and manage your professional journey.</p>
         
-        {/* Stats Grid (Maintained) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard title="Applications" value={stats.applications} icon={<FileText size={20}/>} trend="Keep going!" />
           <StatCard title="Saved Jobs" value={stats.savedJobs} icon={<Bookmark size={20}/>} trend="Ready to apply" onClick={() => navigate('/saved-jobs')} className="cursor-pointer hover:border-primary" />
@@ -96,7 +88,6 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Recent Applications with Edit/Delete */}
           <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <h3 className="text-lg font-semibold">Your Applications</h3>
@@ -108,40 +99,57 @@ const Dashboard = () => {
                   <p className="text-center text-muted-foreground py-4">No applications yet.</p>
                 ) : (
                   recentApplications.map((app) => (
-                    <div key={app._id} className="group p-4 border rounded-xl hover:shadow-md transition-all bg-white">
-                      <div className="flex items-center justify-between mb-3">
+                    <div key={app._id} className="group p-4 border rounded-xl hover:shadow-md transition-all bg-white flex flex-col h-full justify-between">
+                      {/* TOP SECTION: Info and Status */}
+                      <div className="flex items-center justify-between mb-4">
                         <div>
                           <h3 className="font-bold text-slate-800">{app.jobId?.title}</h3>
                           <p className="text-xs text-muted-foreground">{app.jobId?.employerId?.companyName}</p>
                         </div>
                         <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ring-1 ${
-                          app.status === 'pending' ? 'bg-yellow-50 text-yellow-600 ring-yellow-200' : 'bg-green-50 text-green-600 ring-green-200'
+                          app.status === 'accepted' ? 'bg-green-50 text-green-600 ring-green-200' : 
+                          app.status === 'rejected' ? 'bg-red-50 text-red-600 ring-red-200' : 
+                          'bg-yellow-50 text-yellow-600 ring-yellow-200'
                         }`}>
                           {app.status}
                         </span>
                       </div>
 
-                      {/* ACTION BUTTONS: Only show if pending */}
-                      {app.status === 'pending' && (
-                        <div className="flex gap-2 mt-4 pt-3 border-t border-slate-50">
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            className="h-8 text-xs flex-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600"
-                            onClick={() => navigate(`/edit-application/${app._id}`)}
-                          >
-                            <Edit3 className="h-3 w-3 mr-1" /> Edit
-                          </Button>
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            className="h-8 text-xs flex-1 bg-slate-100 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => handleDeleteApplication(app._id)}
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" /> Withdraw
-                          </Button>
-                        </div>
-                      )}
+                      {/* CONDITIONAL ACTION BOX: Swaps between Message or Buttons */}
+                      <div className="mt-auto pt-3 border-t border-slate-50">
+                        {app.employerNotes && app.employerNotes.trim() !== "" ? (
+                          /* SHOW MESSAGE IF IT EXISTS */
+                          <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex items-start gap-2">
+                            <MessageSquare className="h-3.5 w-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">Message from Employer:</p>
+                              <p className="text-xs text-slate-700 italic leading-relaxed">"{app.employerNotes}"</p>
+                            </div>
+                          </div>
+                        ) : (
+                          /* SHOW BUTTONS ONLY IF NO MESSAGE EXISTS AND STATUS IS PENDING */
+                          app.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                className="h-10 text-xs flex-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 font-bold"
+                                onClick={() => navigate(`/edit-application/${app._id}`)}
+                              >
+                                <Edit3 className="h-3 w-3 mr-1" /> Edit
+                              </Button>
+                              <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                className="h-10 text-xs flex-1 bg-slate-100 hover:bg-red-50 hover:text-red-600 font-bold"
+                                onClick={() => handleDeleteApplication(app._id)}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" /> Withdraw
+                              </Button>
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -149,7 +157,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Recommended Jobs (Maintained) */}
           <Card className="border-none shadow-sm">
             <CardHeader><h3 className="text-lg font-semibold">Recommended for you</h3></CardHeader>
             <CardContent>
